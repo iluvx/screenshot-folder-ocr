@@ -2,6 +2,8 @@
 
 CLI tool that runs OCR on images in a folder and saves the text next to each image as a `.txt` file (e.g. `photo.png` → `photo.png.txt`). Images that already have a matching txt are skipped.
 
+![Showcase](showcase.png)
+
 ## Installation
 
 1. Install [Go](https://go.dev/dl/).
