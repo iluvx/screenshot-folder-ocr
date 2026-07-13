@@ -51,6 +51,37 @@ func (h *History) Close() error {
 	return h.db.Close()
 }
 
+// HasOCRTag reports whether the matching history row already has an OCR tag.
+// found is false when no ShareX history entry matches imagePath.
+func (h *History) HasOCRTag(imagePath string) (found, hasTag bool, err error) {
+	abs, err := filepath.Abs(imagePath)
+	if err != nil {
+		abs = imagePath
+	}
+
+	id, tagsJSON, err := h.findEntry(abs)
+	if err != nil {
+		return false, false, err
+	}
+	if id == 0 {
+		return false, false, nil
+	}
+	if tagsJSON == "" {
+		return true, false, nil
+	}
+
+	tags := map[string]string{}
+	if err := json.Unmarshal([]byte(tagsJSON), &tags); err != nil {
+		return true, false, fmt.Errorf("parse tags for id %d: %w", id, err)
+	}
+	for k, v := range tags {
+		if strings.EqualFold(k, ocrTagKey) && strings.TrimSpace(v) != "" {
+			return true, true, nil
+		}
+	}
+	return true, false, nil
+}
+
 // AddOCRTag sets Tags.ocr to the OCR text for the history row matching imagePath.
 // Returns false if no matching ShareX history entry was found.
 func (h *History) AddOCRTag(imagePath, content string) (bool, error) {

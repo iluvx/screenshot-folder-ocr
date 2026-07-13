@@ -182,17 +182,37 @@ func processImage(imagePath string, hist *sharex.History, writeTXT bool) (bool, 
 	if data, err := os.ReadFile(txtPath); err == nil {
 		txtExists = true
 		text = data
-		if hist == nil {
-			fmt.Println(color.YellowString("skip  %s — OCR txt already exists", imagePath))
-			return false, nil
-		}
 	} else if !os.IsNotExist(err) {
 		if writeTXT || hist != nil {
 			return false, fmt.Errorf("check %s: %w", txtPath, err)
 		}
 	}
 
-	if !txtExists {
+	sharexTagged := false
+	if hist != nil {
+		_, hasTag, err := hist.HasOCRTag(imagePath)
+		if err != nil {
+			fmt.Println(color.YellowString("fail  %s — could not read ShareX tag", imagePath))
+			return false, err
+		}
+		sharexTagged = hasTag
+	}
+
+	needTXT := writeTXT && !txtExists
+	needShareX := hist != nil && !sharexTagged
+	if !needTXT && !needShareX {
+		switch {
+		case writeTXT && hist != nil:
+			fmt.Println(color.YellowString("skip  %s — OCR txt and ShareX tag already exist", imagePath))
+		case hist != nil:
+			fmt.Println(color.YellowString("skip  %s — ShareX OCR tag already exists", imagePath))
+		default:
+			fmt.Println(color.YellowString("skip  %s — OCR txt already exists", imagePath))
+		}
+		return false, nil
+	}
+
+	if needTXT || (needShareX && !txtExists) {
 		var err error
 		text, err = ocrImage(imagePath)
 		if err != nil {
@@ -202,7 +222,7 @@ func processImage(imagePath string, hist *sharex.History, writeTXT bool) (bool, 
 	}
 
 	txtWritten := false
-	if writeTXT && !txtExists {
+	if needTXT {
 		if err := os.WriteFile(txtPath, text, 0o644); err != nil {
 			fmt.Println(color.YellowString("fail  %s — could not write OCR txt", imagePath))
 			return false, fmt.Errorf("write %s: %w", txtPath, err)
@@ -210,7 +230,7 @@ func processImage(imagePath string, hist *sharex.History, writeTXT bool) (bool, 
 		txtWritten = true
 	}
 
-	if hist != nil {
+	if needShareX {
 		found, err := updateShareXTag(hist, imagePath, string(text), true)
 		if err != nil {
 			fmt.Println(color.YellowString("fail  %s — could not update ShareX tag", imagePath))
@@ -230,10 +250,10 @@ func processImage(imagePath string, hist *sharex.History, writeTXT bool) (bool, 
 		}
 
 		switch {
+		case txtWritten:
+			fmt.Println(color.GreenString("ocr   %s — wrote OCR txt and added OCR text to ShareX tag", imagePath))
 		case writeTXT && txtExists:
 			fmt.Println(color.GreenString("tag   %s — added OCR text to ShareX tag; txt already exists", imagePath))
-		case writeTXT:
-			fmt.Println(color.GreenString("ocr   %s — wrote OCR txt and added OCR text to ShareX tag", imagePath))
 		case txtExists:
 			fmt.Println(color.GreenString("tag   %s — added existing OCR text to ShareX tag", imagePath))
 		default:
