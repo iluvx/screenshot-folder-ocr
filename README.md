@@ -35,3 +35,7 @@ Remove OCR txt files (only deletes `image.ext.txt` when `image.ext` exists):
 screenshot-folder-ocr clean ./screenshots
 screenshot-folder-ocr clean ./screenshots --crawl
 ```
+
+---
+
+<sup>Kinda stole this idea from [labtec901/Auto-OCR-Screenshot-Directory](https://github.com/labtec901/Auto-OCR-Screenshot-Directory).</sup>
